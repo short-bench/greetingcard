@@ -82,6 +82,18 @@ different subdomain, which is the `Host(...)` rule in `docker-compose.yml`.
 Unlike the other projects this one does **not** publish a `ports:` mapping, so
 it is reachable only through Traefik on 443, never directly on the droplet IP.
 
+### Why the base image is bullseye / Python 3.11
+
+Docker releases before 20.10.10 ship a seccomp profile that blocks the `clone3`
+syscall. glibc 2.34+ (in `python:3.13-slim`) uses `clone3` for every thread, so
+on an older daemon both `pip install` and the running app die with
+`RuntimeError: can't start new thread`.
+
+bullseye has glibc 2.31, which uses plain `clone()`, so it works on the old
+daemon as-is. After upgrading Docker on the droplet
+(`curl -fsSL https://get.docker.com | sh`) the Dockerfile can go back to
+`FROM python:3.13-slim`.
+
 ### 3. Deploy
 
 ```bash
