@@ -56,3 +56,65 @@ It is a plain `http.server` app, fine for a one-off. Put it behind nginx or a
 tunnel (e.g. `cloudflared tunnel --url http://localhost:8000`) so the links work
 as `https://your-domain.com/<hash>`. There is no auth: anyone with the link can
 read the messages and download the PDF.
+
+---
+
+## Running on the droplet next to Traefik
+
+The container joins Traefik's existing network and is routed by labels. It
+publishes **no ports**, so it is only reachable through Traefik.
+
+### 1. Use a subdomain
+
+Card hashes live at the root of the domain (`/<hash>`), so this app needs a host
+of its own — on an apex domain shared with other projects every path would have
+to be routed here. Point a DNS A record at the droplet:
+
+    cards.example.com.  A  <droplet-ip>
+
+### 2. Fill in the three values Traefik needs
+
+Check what your existing projects already use:
+
+```bash
+docker network ls                                    # the Traefik network name
+docker inspect <an-existing-routed-container> \
+  --format '{{json .Config.Labels}}' | tr ',' '\n' | grep traefik
+```
+
+Then edit `docker-compose.yml`:
+
+| Placeholder     | Replace with                                          |
+|-----------------|-------------------------------------------------------|
+| `traefik`       | the external network your Traefik container is on      |
+| `cards.example.com` | your subdomain                                     |
+| `websecure`     | your TLS entrypoint name                               |
+| `letsencrypt`   | your certresolver name                                 |
+
+### 3. Deploy
+
+```bash
+rsync -av --exclude messages.db --exclude .git ./ root@<droplet>:/opt/greetingcard/
+ssh root@<droplet> 'cd /opt/greetingcard && docker compose up -d --build'
+```
+
+Changing a photo or a card's text means editing `app.py` / `images/` and
+re-running `docker compose up -d --build`. Messages live on the named volume
+`greetingcard-data`, so they survive rebuilds.
+
+### 4. Getting the results out
+
+```bash
+# the finished PDFs
+curl -O https://cards.example.com/farewell-giorgio-aajnfuw/pdf
+
+# or the raw database
+docker compose cp greetingcard:/data/messages.db ./messages.db
+```
+
+### Notes
+
+- There is no auth: anyone with a link can read the messages and download the
+  PDF. The hashes are unguessable, but don't send the link to the recipients.
+- When the cards are done: `docker compose down -v` also deletes the volume and
+  with it the messages, so grab the PDFs first.

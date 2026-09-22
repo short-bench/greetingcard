@@ -9,7 +9,7 @@ import re
 import sqlite3
 import sys
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
 from reportlab.lib.pagesizes import A4
@@ -21,7 +21,8 @@ from reportlab.platypus import (
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "messages.db")
+# DB_PATH is overridable so the database can live on a mounted volume.
+DB_PATH = os.environ.get("CARD_DB", os.path.join(BASE_DIR, "messages.db"))
 
 # ---------------------------------------------------------------------------
 # Card configuration. Add/edit cards here.
@@ -382,10 +383,16 @@ class DoneAwareHandler(Handler):
     do_HEAD = do_GET
 
 
+class Server(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
 if __name__ == "__main__":
+    os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
     init_db()
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-    print("Greeting cards running on http://localhost:%d" % port)
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", 8000))
+    print("Greeting cards running on port %d (db: %s)" % (port, DB_PATH), flush=True)
     for h in CARDS:
-        print("  http://localhost:%d/%s" % (port, h))
-    HTTPServer(("0.0.0.0", port), DoneAwareHandler).serve_forever()
+        print("  /%s" % h, flush=True)
+    Server(("0.0.0.0", port), DoneAwareHandler).serve_forever()

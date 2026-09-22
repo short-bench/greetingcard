@@ -1,0 +1,5 @@
+messages.db
+__pycache__/
+*.pyc
+data/
+README.md

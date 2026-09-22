@@ -1,0 +1,5 @@
+messages.db
+data/
+__pycache__/
+*.pyc
+.idea/
