@@ -70,26 +70,17 @@ Card hashes live at the root of the domain (`/<hash>`), so this app needs a host
 of its own — on an apex domain shared with other projects every path would have
 to be routed here. Point a DNS A record at the droplet:
 
-    cards.example.com.  A  <droplet-ip>
+    cards.retrobit.me.  A  <droplet-ip>
 
-### 2. Fill in the three values Traefik needs
+### 2. Traefik wiring
 
-Check what your existing projects already use:
+Already filled in to match the other projects on the droplet: external network
+`traefik_web`, certresolver `lets-encrypt`, and no explicit `entrypoints` label
+(Traefik's defaults, same as the scrum app). Nothing to change unless you want a
+different subdomain, which is the `Host(...)` rule in `docker-compose.yml`.
 
-```bash
-docker network ls                                    # the Traefik network name
-docker inspect <an-existing-routed-container> \
-  --format '{{json .Config.Labels}}' | tr ',' '\n' | grep traefik
-```
-
-Then edit `docker-compose.yml`:
-
-| Placeholder     | Replace with                                          |
-|-----------------|-------------------------------------------------------|
-| `traefik`       | the external network your Traefik container is on      |
-| `cards.example.com` | your subdomain                                     |
-| `websecure`     | your TLS entrypoint name                               |
-| `letsencrypt`   | your certresolver name                                 |
+Unlike the other projects this one does **not** publish a `ports:` mapping, so
+it is reachable only through Traefik on 443, never directly on the droplet IP.
 
 ### 3. Deploy
 
@@ -106,7 +97,7 @@ re-running `docker compose up -d --build`. Messages live on the named volume
 
 ```bash
 # the finished PDFs
-curl -O https://cards.example.com/farewell-giorgio-aajnfuw/pdf
+curl -O https://cards.retrobit.me/farewell-giorgio-aajnfuw/pdf
 
 # or the raw database
 docker compose cp greetingcard:/data/messages.db ./messages.db

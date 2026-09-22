@@ -6,20 +6,18 @@ services:
     volumes:
       - greetingcard-data:/data
     networks:
-      - traefik            # <-- must match your existing Traefik network
+      - traefik_web
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=traefik"
-      # --- change the host rule to your domain ---
-      - "traefik.http.routers.greetingcard.rule=Host(`cards.example.com`)"
-      - "traefik.http.routers.greetingcard.entrypoints=websecure"
-      - "traefik.http.routers.greetingcard.tls=true"
-      - "traefik.http.routers.greetingcard.tls.certresolver=letsencrypt"
-      - "traefik.http.services.greetingcard.loadbalancer.server.port=8000"
+      - traefik.enable=true
+      - traefik.docker.network=traefik_web
+      - traefik.http.routers.greetingcard.rule=Host(`cards.retrobit.me`)
+      - traefik.http.routers.greetingcard.tls=true
+      - traefik.http.routers.greetingcard.tls.certresolver=lets-encrypt
+      - traefik.http.services.greetingcard.loadbalancer.server.port=8000
 
 volumes:
   greetingcard-data:
 
 networks:
-  traefik:
-    external: true         # <-- the network Traefik already runs on
+  traefik_web:
+    external: true
